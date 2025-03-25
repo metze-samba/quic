@@ -50,6 +50,15 @@ struct quic_msg {
 	uint8_t level;
 };
 
+struct quic_handshake_ctx;
+
+typedef int (*quic_handshake_step_process_fn_t)(struct quic_handshake_ctx *ctx);
+
+struct quic_handshake_step_internal {
+	struct quic_handshake_step step;
+	quic_handshake_step_process_fn_t process_fn;
+};
+
 struct quic_handshake_ctx {
 	int saved_sockfd;
 	struct quic_setopt *set_list;
@@ -64,6 +73,7 @@ struct quic_handshake_ctx {
 		unsigned int len;
 	} transport_param;
 	gnutls_anti_replay_t quic_anti_replay;
+	struct quic_handshake_step_internal next_step;
 };
 
 static struct quic_handshake_ctx *quic_handshake_ctx_get(gnutls_session_t session)
@@ -677,7 +687,7 @@ static int quic_storage_add(void *dbf, time_t exp_time, const gnutls_datum_t *ke
 	return 0;
 }
 
-static int quic_handshake_init(gnutls_session_t session)
+int quic_handshake_init(gnutls_session_t session)
 {
 	struct quic_handshake_ctx *ctx;
 	int ret;
@@ -712,7 +722,33 @@ static int quic_handshake_init(gnutls_session_t session)
 	return 0;
 }
 
-static void quic_handshake_deinit(gnutls_session_t session)
+struct quic_handshake_step *quic_handshake_next_step(gnutls_session_t session)
+{
+	struct quic_handshake_ctx *ctx = gnutls_db_get_ptr(session);
+
+	return &ctx->next_step.step;
+}
+
+int quic_handshake_process_step(gnutls_session_t session, const struct quic_handshake_step *step)
+{
+	struct quic_handshake_ctx *ctx = gnutls_db_get_ptr(session);
+
+	if (step != &ctx->next_step.step) {
+		quic_log_error("ctx invalid step[%p] != expected[%p] %d",
+			       step, &ctx->next_step.step, EINVAL);
+		return -EINVAL;
+	}
+
+	if (ctx->next_step.process_fn == NULL) {
+		quic_log_error("ctx no process_fn %d",
+			       EINVAL);
+		return -EINVAL;
+	}
+
+	return ctx->next_step.process_fn(ctx);
+}
+
+void quic_handshake_deinit(gnutls_session_t session)
 {
 	struct quic_handshake_ctx *ctx = quic_handshake_ctx_get(session);
 	struct quic_setopt *sopt;
