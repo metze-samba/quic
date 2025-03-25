@@ -42,7 +42,7 @@ struct quic_msg {
 	uint8_t level;
 };
 
-struct quic_ctx {
+struct quic_handshake_ctx {
 	struct quic_msg *send_list;
 	struct quic_msg *send_last;
 	uint8_t data[65536];
@@ -337,7 +337,7 @@ static int quic_set_secret(gnutls_session_t session, gnutls_record_encryption_le
 			   const void *rx_secret, const void *tx_secret, size_t secretlen)
 {
 	gnutls_cipher_algorithm_t type  = gnutls_cipher_get(session);
-	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
+	struct quic_handshake_ctx *ctx = gnutls_db_get_ptr(session);
 	struct quic_crypto_secret secret = {};
 	int sockfd, ret, len = sizeof(secret);
 
@@ -467,7 +467,7 @@ static int quic_tp_recv(gnutls_session_t session, const uint8_t *buf, size_t len
 
 static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
 {
-	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
+	struct quic_handshake_ctx *ctx = gnutls_db_get_ptr(session);
 	int ret;
 
 	quic_log_notice("%s: %u", __func__,
@@ -538,7 +538,7 @@ static void quic_msg_destroy(struct quic_msg *msg)
 static int quic_msg_read(gnutls_session_t session, gnutls_record_encryption_level_t level,
 			 gnutls_handshake_description_t htype, const void *data, size_t datalen)
 {
-	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
+	struct quic_handshake_ctx *ctx = gnutls_db_get_ptr(session);
 	struct quic_msg *msg;
 
 	quic_log_notice("%s: %u %u %u %zu", __func__,
@@ -706,7 +706,7 @@ int quic_handshake(gnutls_session_t session)
 {
 	int ret, sockfd = gnutls_transport_get_int(session);
 	struct quic_msg *msg, _msg = {};
-	struct quic_ctx *ctx;
+	struct quic_handshake_ctx *ctx;
 	unsigned int len;
 	uint8_t opt[128];
 
