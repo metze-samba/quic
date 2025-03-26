@@ -16,7 +16,8 @@ daemon_stop()
 
 daemon_run()
 {
-	$@ > /dev/null 2>&1 &
+	$@ &
+	# > /dev/null 2>&1 &
 	sleep 2
 }
 
