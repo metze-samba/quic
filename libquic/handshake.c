@@ -25,6 +25,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <poll.h>
+#include <unistd.h>
+#include <assert.h>
 
 #include "netinet/quic.h"
 
@@ -83,7 +85,7 @@ static void quic_log_debug(char const *fmt, ...)
 		quic_log_func(LOG_DEBUG, msg);
 		return;
 	}
-	printf("[DEBUG] %s\n", msg);
+	printf("PID[%d][DEBUG] %s\n", getpid(), msg);
 }
 
 /**
@@ -112,7 +114,7 @@ static void quic_log_notice(char const *fmt, ...)
 		quic_log_func(LOG_NOTICE, msg);
 		return;
 	}
-	printf("[NOTICE] %s\n", msg);
+	printf("PID[%d][NOTICE] %s\n", getpid(), msg);
 }
 
 /**
@@ -141,7 +143,7 @@ static void quic_log_error(char const *fmt, ...)
 		quic_log_func(LOG_ERR, msg);
 		return;
 	}
-	printf("[ERROR] %s\n", msg);
+	printf("PID[%d][ERROR] %s\n", getpid(), msg);
 }
 
 /**
