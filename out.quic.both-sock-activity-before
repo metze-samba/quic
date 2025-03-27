@@ -1,0 +1,40 @@
+PID[19196]: do_server...                                                         
+PID[19211]: do_client... 
+PID[19211][ERROR] setsockopt(QUIC_SOCKOPT_TOKEN)                                                                                                 14:47:16 [42/1954]
+PID[19211][ERROR] getsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT)                                                                                                     
+PID[19211][DEBUG]   Read func: 0 1 394                                                                                                                             
+PID[19211][ERROR] < Handshake SEND: 394 1                                                                                                                          
+PID[19196][ERROR] setsockopt(QUIC_SOCKOPT_TOKEN)                                                                                                                   
+PID[19196][ERROR] > Handshake RECV: 394 1                                                                                                                          
+PID[19196][ERROR] setsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT)                                                                                                     
+PID[19196][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(tx)                                                                                                       
+PID[19196][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(rx)                                                                                                       
+PID[19196][DEBUG]   Secret func: 2 1 1                                                                                                                             
+PID[19196][ERROR] getsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT)                  
+PID[19196][DEBUG]   Read func: 0 2 56                                            
+PID[19196][DEBUG]   Read func: 2 8 95                                            
+PID[19196][DEBUG]   Read func: 2 20 36                                                                                                                             
+PID[19196][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(tx)                  
+PID[19196][DEBUG]   Secret func: 0 1 0                                           
+PID[19196][ERROR] < Handshake SEND: 56 1                                                                                                                           
+PID[19196][ERROR] < Handshake SEND: 95 2                   
+PID[19196][ERROR] < Handshake SEND: 36 2                    
+PID[19211][ERROR] > Handshake RECV: 56 1               
+PID[19211][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(tx)
+PID[19211][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(rx)
+PID[19211][DEBUG]   Secret func: 2 1 1                                           
+PID[19211][ERROR] > Handshake RECV: 95 2                  
+PID[19211][ERROR] setsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT) 
+PID[19211][ERROR] > Handshake RECV: 36 2                   
+PID[19211][DEBUG]   Read func: 2 20 36                                           
+PID[19211][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(tx)
+PID[19211][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(rx)
+PID[19211][ERROR] ctx->completed = 1
+PID[19211][DEBUG]   Secret func: 0 1 1
+PID[19211][ERROR] < Handshake SEND: 36 2 
+PID[19196][ERROR] > Handshake RECV: 36 2 
+PID[19196][ERROR] setsockopt(QUIC_SOCKOPT_CRYPTO_SECRET)(rx)
+PID[19196][ERROR] ctx->completed = 1
+PID[19196][DEBUG]   Secret func: 0 0 1
+HANDSHAKE DONE                                                                   
+HANDSHAKE DONE
