@@ -2220,24 +2220,25 @@ static int do_client(int argc, char *argv[])
 		return -1;
 	}
 
-	//param.remote;
-	param.disable_active_migration = 1;
-	param.grease_quic_bit = 1;
-	param.stateless_reset = 1;
-	param.disable_1rtt_encryption = 1;
-	param.disable_compatible_version = 1;
-	param.active_connection_id_limit = 5;
-	param.ack_delay_exponent = 4;
 	param.max_datagram_frame_size = 1399;
-	param.max_udp_payload_size = 2345;
-	param.max_idle_timeout = 20000000;
-	param.max_ack_delay = 56;
-	param.max_streams_bidi = 1;
+	//param.remote;
+	//param.disable_active_migration;
+	//param.grease_quic_bit;
+	//param.stateless_reset;
+	//param.disable_1rtt_encryption;
+	//param.disable_compatible_version;
+	//param.active_connection_id_limit;
+	//param.ack_delay_exponent;
+	//param.max_datagram_frame_size;
+	//param.max_udp_payload_size;
+	//param.max_idle_timeout;
+	//param.max_ack_delay;
+	//param.max_streams_bidi = 1;
 	param.max_streams_uni = 1;
-	param.max_data = 55555 * 32;
-	param.max_stream_data_bidi_local = 4321;
-	param.max_stream_data_bidi_remote = 2345;
-	param.max_stream_data_uni = 65536 * 3;
+	//param.max_data;
+	//param.max_stream_data_bidi_local = 1;
+	//param.max_stream_data_bidi_remote;
+	//param.max_stream_data_uni = 0;
 	//param.reserved;
 
 	if (argc < 5)
