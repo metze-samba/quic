@@ -742,6 +742,15 @@ int quic_handshake(gnutls_session_t session)
 	if (ret)
 		goto out;
 
+	if (ctx->is_serv) {
+		ret = gnutls_anti_replay_init(&ctx->quic_anti_replay);
+		if (ret)
+			goto out;
+		gnutls_anti_replay_set_add_function(ctx->quic_anti_replay, quic_storage_add);
+		gnutls_anti_replay_set_ptr(ctx->quic_anti_replay, NULL);
+		gnutls_anti_replay_enable(session, ctx->quic_anti_replay);
+	}
+
 	if (!ctx->is_serv) {
 		ret = quic_handshake_process(session, QUIC_CRYPTO_INITIAL, NULL, 0);
 		if (ret)
@@ -760,13 +769,6 @@ int quic_handshake(gnutls_session_t session)
 			quic_msg_destroy(msg);
 			msg = ctx->send_list;
 		}
-	} else {
-		ret = gnutls_anti_replay_init(&ctx->quic_anti_replay);
-		if (ret)
-			goto out;
-		gnutls_anti_replay_set_add_function(ctx->quic_anti_replay, quic_storage_add);
-		gnutls_anti_replay_set_ptr(ctx->quic_anti_replay, NULL);
-		gnutls_anti_replay_enable(session, ctx->quic_anti_replay);
 	}
 
 	while (!ctx->completed) {
