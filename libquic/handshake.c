@@ -51,6 +51,7 @@ struct quic_msg {
 };
 
 struct quic_handshake_ctx {
+	int saved_sockfd;
 	struct quic_setopt *set_list;
 	struct quic_setopt *set_last;
 	struct quic_msg *send_list;
@@ -701,6 +702,13 @@ static int quic_handshake_init(gnutls_session_t session)
 	gnutls_handshake_set_read_function(session, quic_msg_read);
 	gnutls_alert_set_read_function(session, quic_alert_read);
 
+	/*
+	 * During the handshake nobody should use the sockfd
+	 * other than the main loop.
+	 */
+	ctx->saved_sockfd = gnutls_transport_get_int(session);
+	gnutls_transport_set_int(session, -1);
+
 	return 0;
 }
 
@@ -721,6 +729,8 @@ static void quic_handshake_deinit(gnutls_session_t session)
 	}
 
 	gnutls_ext_set_data(session, QUIC_TLSEXT_TP_PARAM, NULL);
+
+	gnutls_transport_set_int(session, ctx->saved_sockfd);
 
 	sopt = ctx->set_list;
 	while (sopt) {
