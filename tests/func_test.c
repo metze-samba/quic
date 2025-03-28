@@ -2220,27 +2220,7 @@ static int do_client(int argc, char *argv[])
 		return -1;
 	}
 
-	param.max_datagram_frame_size = 1399;
-	//param.remote;
-	//param.disable_active_migration;
-	//param.grease_quic_bit;
-	//param.stateless_reset;
-	//param.disable_1rtt_encryption;
-	//param.disable_compatible_version;
-	//param.active_connection_id_limit;
-	//param.ack_delay_exponent;
-	//param.max_datagram_frame_size;
-	//param.max_udp_payload_size;
-	//param.max_idle_timeout;
-	//param.max_ack_delay;
-	//param.max_streams_bidi = 1;
-	param.max_streams_uni = 1;
-	//param.max_data;
-	//param.max_stream_data_bidi_local = 1;
-	//param.max_stream_data_bidi_remote;
-	//param.max_stream_data_uni = 0;
-	//param.reserved;
-
+	param.max_datagram_frame_size = 1400;
 	if (argc < 5)
 		goto start;
 	pkey = argv[4];
@@ -2251,7 +2231,6 @@ start:
 	if (quic_client_handshake(sockfd, pkey, NULL, NULL))
 		return -1;
 	printf("HANDSHAKE DONE\n");
-	return 0;
 	return do_client_test(sockfd);
 }
 
