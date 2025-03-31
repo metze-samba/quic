@@ -69,6 +69,8 @@ struct quic_handshake_ctx {
 	uint8_t completed:1;
 	uint8_t is_serv:1;
 	struct {
+		uint8_t defer:1;
+		uint8_t deferred:1;
 		uint8_t buf[256];
 		unsigned int len;
 	} transport_param;
@@ -516,6 +518,13 @@ static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
 		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
 	}
 
+	quic_log_error("%s: defer[%u]\n", __func__, ctx->transport_param.defer);
+	if (ctx->transport_param.defer) {
+		ctx->transport_param.defer = 0;
+		ctx->transport_param.deferred = 1;
+		return GNUTLS_E_AGAIN;
+	}
+
 	ret = gnutls_buffer_append_data(extdata,
 					ctx->transport_param.buf,
 					ctx->transport_param.len);
@@ -592,21 +601,33 @@ static int quic_msg_read(gnutls_session_t session, gnutls_record_encryption_leve
 static int quic_handshake_process(gnutls_session_t session, uint8_t level,
 				  const uint8_t *data, size_t datalen)
 {
+	struct quic_handshake_ctx *ctx = quic_handshake_ctx_get(session);
 	gnutls_record_encryption_level_t l;
 	int ret;
 
+	quic_log_error("quic_handshake_process(%u, %zu)", level, datalen);
 	l = quic_tls_crypto_level(level);
 	if (datalen > 0) {
 		ret = gnutls_handshake_write(session, l, data, datalen);
+		quic_log_error("gnutls_handshake_write(%u, %zu): %s (%d)", level, datalen, gnutls_strerror(ret), ret);
 		if (ret != 0) {
+			quic_log_error("gnutls_handshake_write(%u, %zu): %s (%d)", level, datalen, gnutls_strerror(ret), ret);
 			if (!gnutls_error_is_fatal(ret))
 				return 0;
 			goto err;
 		}
 	}
 
+again:
 	ret = gnutls_handshake(session);
+	quic_log_error("gnutls_handshake(): %s (%d)", gnutls_strerror(ret), ret);
 	if (ret < 0) {
+		quic_log_error("gnutls_handshake(): %s (%d)", gnutls_strerror(ret), ret);
+		if (ret == GNUTLS_E_AGAIN && ctx != NULL && ctx->transport_param.deferred == 1) {
+			ctx->transport_param.deferred = 0;
+			goto again;
+			return ret;
+		}
 		if (!gnutls_error_is_fatal(ret))
 			return 0;
 		goto err;
@@ -687,6 +708,16 @@ static int quic_storage_add(void *dbf, time_t exp_time, const gnutls_datum_t *ke
 	return 0;
 }
 
+static void quic_gnutls_log_func(int level, const char *msg)
+{
+	quic_log_error("GNUTLS-LOG[%d]: %s", level, msg);
+}
+
+static void quic_gnutls_audit_log_func(gnutls_session_t session, const char *msg)
+{
+	quic_log_error("GNUTLS-AUDIT[%p]: %s", session, msg);
+}
+
 int quic_handshake_init(gnutls_session_t session)
 {
 	struct quic_handshake_ctx *ctx;
@@ -711,6 +742,11 @@ int quic_handshake_init(gnutls_session_t session)
 	gnutls_handshake_set_secret_function(session, quic_set_secret);
 	gnutls_handshake_set_read_function(session, quic_msg_read);
 	gnutls_alert_set_read_function(session, quic_alert_read);
+
+	gnutls_global_set_log_function(quic_gnutls_log_func);
+	quic_log_error("GNUTLS-SETUP-AUDIT[%p]", session);
+	gnutls_global_set_audit_log_function(quic_gnutls_audit_log_func);
+	gnutls_global_set_log_level(99);
 
 	/*
 	 * During the handshake nobody should use the sockfd
@@ -823,6 +859,8 @@ int quic_handshake(gnutls_session_t session)
 	ret = getsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TOKEN, opt, &len);
 	ctx->is_serv = !!ret;
 
+	ctx->transport_param.defer = ctx->is_serv;
+
 	if (ctx->is_serv) {
 		ret = gnutls_anti_replay_init(&ctx->quic_anti_replay);
 		if (ret)
@@ -834,6 +872,7 @@ int quic_handshake(gnutls_session_t session)
 
 	if (!ctx->is_serv) {
 		ret = quic_handshake_process(session, QUIC_CRYPTO_INITIAL, NULL, 0);
+		quic_log_error("quic_handshake_process(INITIAL): %s (%d)", gnutls_strerror(ret), ret);
 		if (ret)
 			goto out;
 	}
@@ -855,8 +894,10 @@ int quic_handshake(gnutls_session_t session)
 			msg = &_msg;
 			msg->data = ctx->data;
 			msg->len = sizeof(ctx->data);
+			quic_log_debug("> Handshake RECVMSG...: %u", msg->len);
 			ret = quic_handshake_recvmsg(sockfd, msg);
 			if (ret <= 0) {
+				quic_log_error("socket recvmsg error %s %d", strerror(errno), errno);
 				if (errno == EAGAIN || errno == EWOULDBLOCK)
 					break;
 				quic_log_error("socket recvmsg error %d", errno);
@@ -865,6 +906,7 @@ int quic_handshake(gnutls_session_t session)
 			}
 			quic_log_debug("> Handshake RECV: %u %u", msg->len, msg->level);
 			ret = quic_handshake_process(session, msg->level, msg->data, msg->len);
+			quic_log_error("quic_handshake_process(%u, %zu): %s (%d)", msg->level, msg->len, gnutls_strerror(ret), ret);
 			if (ret)
 				goto out;
 		}
