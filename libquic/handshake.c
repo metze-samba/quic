@@ -518,12 +518,35 @@ static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
 		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
 	}
 
-	quic_log_error("%s: defer[%u]\n", __func__, ctx->transport_param.defer);
-	if (ctx->transport_param.defer) {
-		ctx->transport_param.defer = 0;
-		ctx->transport_param.deferred = 1;
-		return GNUTLS_E_AGAIN;
+	//quic_log_error("%s: defer[%u]\n", __func__, ctx->transport_param.defer);
+	//if (ctx->transport_param.defer) {
+	//	ctx->transport_param.defer = 0;
+	//	ctx->transport_param.deferred = 1;
+	//	return GNUTLS_E_AGAIN;
+	//}
+{
+	unsigned int len;
+	uint8_t buf[256];
+
+	len = sizeof(buf);
+	ret = getsockopt(ctx->saved_sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
+			 buf, &len);
+	if (ret != 0) {
+		quic_log_error("socket getsockopt transport_param_ext error %d", errno);
+		ret = errno ? -errno : -1;
+		return ret;
 	}
+
+	if (len != ctx->transport_param.len) {
+		quic_log_error("socket getsockopt transport_param_ext len[%u] != %u", len, ctx->transport_param.len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+	ret = gnutls_memcmp(buf, ctx->transport_param.buf, len);
+	if (ret != 0) {
+		quic_log_error("socket getsockopt transport_param_ext len[%u] content changed", len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+}
 
 	ret = gnutls_buffer_append_data(extdata,
 					ctx->transport_param.buf,
@@ -753,7 +776,7 @@ int quic_handshake_init(gnutls_session_t session)
 	 * other than the main loop.
 	 */
 	ctx->saved_sockfd = gnutls_transport_get_int(session);
-	gnutls_transport_set_int(session, -1);
+	//gnutls_transport_set_int(session, -1);
 
 	return 0;
 }
