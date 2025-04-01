@@ -340,6 +340,8 @@ static int quic_set_secret(gnutls_session_t session, gnutls_record_encryption_le
 	struct quic_crypto_secret secret = {};
 	int sockfd, ret, len = sizeof(secret);
 
+	quic_log_debug("%s: %u %u %u %zu", __func__, level, !!tx_secret, !!rx_secret, secretlen);
+
 	if (!ctx || ctx->completed)
 		return 0;
 
@@ -398,25 +400,20 @@ static int quic_alert_read(gnutls_session_t session,
 static int quic_tp_recv(gnutls_session_t session, const uint8_t *buf, size_t len)
 {
 	int sockfd = gnutls_transport_get_int(session);
-
-	if (setsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT, buf, len)) {
-		quic_log_error("socket setsockopt transport_param_ext error %d", errno);
-		return -1;
-	}
-	return 0;
-}
-
-static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
-{
 	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
-	int ret;
+
+	quic_log_notice("%s: %u %u", __func__,
+			!!session, len);
 
 {
+	//int sockfd = gnutls_transport_get_int(session);
 	unsigned int len;
 	uint8_t buf[256];
+	int ret;
 
+	quic_log_error("%s:%u: BEFORE SET getsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT is_serv[%u] ...", __func__, __LINE__, ctx->is_serv);
 	len = sizeof(buf);
-	ret = getsockopt(ctx->saved_sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
+	ret = getsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
 			 buf, &len);
 	if (ret != 0) {
 		quic_log_error("socket getsockopt transport_param_ext error %d", errno);
@@ -430,7 +427,73 @@ static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
 	}
 	ret = gnutls_memcmp(buf, ctx->transport_param.buf, len);
 	if (ret != 0) {
-		quic_log_error("socket getsockopt transport_param_ext len[%u] content changed", len);
+		quic_log_error("TP_SEND: socket getsockopt transport_param_ext len[%u] content changed", len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+}
+	if (setsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT, buf, len)) {
+		quic_log_error("socket setsockopt transport_param_ext error %d", errno);
+		return -1;
+	}
+{
+	//int sockfd = gnutls_transport_get_int(session);
+	unsigned int len;
+	uint8_t buf[256];
+	int ret;
+
+	quic_log_error("%s:%u: AFTER SET getsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT is_serv[%u] ...", __func__, __LINE__, ctx->is_serv);
+	len = sizeof(buf);
+	ret = getsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
+			 buf, &len);
+	if (ret != 0) {
+		quic_log_error("socket getsockopt transport_param_ext error %d", errno);
+		ret = errno ? -errno : -1;
+		return ret;
+	}
+
+	if (len != ctx->transport_param.len) {
+		quic_log_error("socket getsockopt transport_param_ext len[%u] != %u", len, ctx->transport_param.len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+	ret = gnutls_memcmp(buf, ctx->transport_param.buf, len);
+	if (ret != 0) {
+		quic_log_error("TP_SEND: socket getsockopt transport_param_ext len[%u] content changed", len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+}
+	return 0;
+}
+
+static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
+{
+	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
+	int ret;
+
+	quic_log_notice("%s: %u", __func__,
+			!!session);
+
+{
+	int sockfd = gnutls_transport_get_int(session);
+	unsigned int len;
+	uint8_t buf[256];
+
+	quic_log_error("%s:%u: getsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT is_serv[%u] ...", __func__, __LINE__, ctx->is_serv);
+	len = sizeof(buf);
+	ret = getsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
+			 buf, &len);
+	if (ret != 0) {
+		quic_log_error("socket getsockopt transport_param_ext error %d", errno);
+		ret = errno ? -errno : -1;
+		return ret;
+	}
+
+	if (len != ctx->transport_param.len) {
+		quic_log_error("socket getsockopt transport_param_ext len[%u] != %u", len, ctx->transport_param.len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+	ret = gnutls_memcmp(buf, ctx->transport_param.buf, len);
+	if (ret != 0) {
+		quic_log_error("TP_SEND: socket getsockopt transport_param_ext len[%u] content changed", len);
 		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
 	}
 }
@@ -477,6 +540,9 @@ static int quic_msg_read(gnutls_session_t session, gnutls_record_encryption_leve
 	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
 	struct quic_msg *msg;
 
+	quic_log_notice("%s: %u %u %u %zu", __func__,
+			!!session, level, htype, datalen);
+
 	if (!ctx || htype == GNUTLS_HANDSHAKE_KEY_UPDATE)
 		return 0;
 
@@ -500,12 +566,16 @@ static int quic_msg_read(gnutls_session_t session, gnutls_record_encryption_leve
 static int quic_handshake_process(gnutls_session_t session, uint8_t level,
 				  const uint8_t *data, size_t datalen)
 {
+	struct quic_ctx *ctx = gnutls_db_get_ptr(session);
 	gnutls_record_encryption_level_t l;
 	int ret;
 
+	quic_log_error("%s:%u: datalen[%zu]", __func__, __LINE__, datalen);
 	l = quic_tls_crypto_level(level);
 	if (datalen > 0) {
 		ret = gnutls_handshake_write(session, l, data, datalen);
+		quic_log_error("%s:%u: gnutls_handshake_write() %s %u", __func__, __LINE__,
+				gnutls_strerror(ret), ret);
 		if (ret != 0) {
 			if (!gnutls_error_is_fatal(ret))
 				return 0;
@@ -513,7 +583,35 @@ static int quic_handshake_process(gnutls_session_t session, uint8_t level,
 		}
 	}
 
+if (ctx->is_serv) {
+	int sockfd = gnutls_transport_get_int(session);
+	unsigned int len;
+	uint8_t buf[256];
+
+	len = sizeof(buf);
+	quic_log_error("%s:%u: getsockopt(QUIC_SOCKOPT_TRANSPORT_PARAM_EXT is_serv[%u] ...", __func__, __LINE__, ctx->is_serv);
+	ret = getsockopt(sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
+			 buf, &len);
+	if (ret != 0) {
+		quic_log_error("socket getsockopt transport_param_ext error %d", errno);
+		ret = errno ? -errno : -1;
+		return ret;
+	}
+
+	if (len != ctx->transport_param.len) {
+		quic_log_error("socket getsockopt transport_param_ext len[%u] != %u", len, ctx->transport_param.len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+	ret = gnutls_memcmp(buf, ctx->transport_param.buf, len);
+	if (ret != 0) {
+		quic_log_error("SERV: socket getsockopt transport_param_ext len[%u] content changed", len);
+		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
+	}
+}
+	quic_log_error("%s:%u: gnutls_handshake() is_serv[%u] ...", __func__, __LINE__, ctx->is_serv);
 	ret = gnutls_handshake(session);
+		quic_log_error("%s:%u: gnutls_handshake() %s %u", __func__, __LINE__,
+				gnutls_strerror(ret), ret);
 	if (ret < 0) {
 		if (!gnutls_error_is_fatal(ret))
 			return 0;
