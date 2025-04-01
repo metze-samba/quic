@@ -96,6 +96,7 @@ static int do_server(int argc, char *argv[])
 	unsigned int addrlen, flags;
 	struct sockaddr_storage sa = {};
 	char msg[50], *alpn, *cert;
+	struct quic_config config = {};
 	int listenfd, sockfd, ret;
 	const char *rc;
 	int64_t sid;
@@ -129,6 +130,13 @@ static int do_server(int argc, char *argv[])
 		printf("socket listen failed\n");
 		return -1;
 	}
+
+	config.version = QUIC_VERSION_V2;
+	if (setsockopt(listenfd, SOL_QUIC, QUIC_SOCKOPT_CONFIG, &config, sizeof(config))) {
+		printf("socket setsockopt config failed\n");
+		return -1;
+	}
+
 	addrlen = sizeof(sa);
 	sockfd = accept(listenfd, (struct sockaddr *)&sa, &addrlen);
 	if (sockfd < 0) {
