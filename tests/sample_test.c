@@ -43,6 +43,8 @@ static int do_client(int argc, char *argv[])
 		return 0;
 	}
 
+printf("PID[%d]: do_client\n", getpid());
+
 	rc = parse_address(argv[2], argv[3], &ra);
 	if (rc != NULL) {
 		printf("parse address failed: %s\n", rc);
@@ -106,6 +108,8 @@ static int do_server(int argc, char *argv[])
 		       "<CERTIFICATE_FILE | 'none'> [ALPN]\n", argv[0]);
 		return 0;
 	}
+
+printf("PID[%d]: do_server\n", getpid());
 
 	rc = parse_address(argv[2], argv[3], &sa);
 	if (rc != NULL) {
@@ -182,7 +186,7 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	quic_set_log_level(LOG_NOTICE);
+	quic_set_log_level(LOG_DEBUG);
 
 	if (!strcmp(argv[1], "client"))
 		return do_client(argc, argv);
