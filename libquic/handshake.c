@@ -425,30 +425,6 @@ static int quic_tp_send(gnutls_session_t session, gnutls_buffer_t extdata)
 	struct quic_handshake_ctx *ctx = quic_handshake_ctx_get(session);
 	int ret;
 
-{
-	unsigned int len;
-	uint8_t buf[256];
-
-	len = sizeof(buf);
-	ret = getsockopt(ctx->saved_sockfd, SOL_QUIC, QUIC_SOCKOPT_TRANSPORT_PARAM_EXT,
-			 buf, &len);
-	if (ret != 0) {
-		quic_log_error("socket getsockopt transport_param_ext error %d", errno);
-		ret = errno ? -errno : -1;
-		return ret;
-	}
-
-	if (len != ctx->transport_param.len) {
-		quic_log_error("socket getsockopt transport_param_ext len[%u] != %u", len, ctx->transport_param.len);
-		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
-	}
-	ret = gnutls_memcmp(buf, ctx->transport_param.buf, len);
-	if (ret != 0) {
-		quic_log_error("socket getsockopt transport_param_ext len[%u] content changed", len);
-		return GNUTLS_E_UNIMPLEMENTED_FEATURE;
-	}
-}
-
 	ret = gnutls_buffer_append_data(extdata,
 					ctx->transport_param.buf,
 					ctx->transport_param.len);
