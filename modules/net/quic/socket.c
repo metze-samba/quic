@@ -710,19 +710,6 @@ static int quic_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
 		msginfo.level = hinfo.crypto_level;
 		msginfo.msg = &msg->msg_iter;
 		while (iov_iter_count(&msg->msg_iter) > 0) {
-			len = iov_iter_count(msginfo.msg);
-			if (sk_stream_wspace(sk) < len || !sk_wmem_schedule(sk, len)) {
-				if (delay) {
-					quic_outq_set_force_delay(outq, 0);
-					quic_outq_transmit(sk);
-				}
-				err = quic_wait_for_send(sk, flags, len);
-				if (err) {
-					if (err == -EPIPE || !bytes)
-						goto err;
-					goto out;
-				}
-			}
 			frame = quic_frame_create(sk, QUIC_FRAME_CRYPTO, &msginfo);
 			if (!frame) {
 				if (!bytes) {
@@ -730,6 +717,20 @@ static int quic_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
 					goto err;
 				}
 				goto out;
+			}
+			len = frame->bytes;
+			if (sk_stream_wspace(sk) < len || !sk_wmem_schedule(sk, len)) {
+				if (delay) {
+					quic_outq_set_force_delay(outq, 0);
+					quic_outq_transmit(sk);
+				}
+				err = quic_wait_for_send(sk, flags, len);
+				if (err) {
+					quic_frame_put(frame);
+					if (err == -EPIPE || !bytes)
+						goto err;
+					goto out;
+				}
 			}
 			bytes += frame->bytes;
 			quic_outq_set_force_delay(outq, delay);
