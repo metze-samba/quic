@@ -711,16 +711,12 @@ static int quic_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
 		msginfo.msg = &msg->msg_iter;
 		while (iov_iter_count(&msg->msg_iter) > 0) {
 			len = iov_iter_count(msginfo.msg);
-			pr_warn("HANDSHAKE try len[%d] delay[%u]\n", len, delay);
 			if (sk_stream_wspace(sk) < len || !sk_wmem_schedule(sk, len)) {
-			pr_warn("HANDSHAKE need wait len[%d]\n", len);
 				if (delay) {
 					quic_outq_set_force_delay(outq, 0);
 					quic_outq_transmit(sk);
 				}
-			pr_warn("HANDSHAKE wait for len[%d]\n", len);
 				err = quic_wait_for_send(sk, flags, len);
-			pr_warn("HANDSHAKE waited for len[%d] err[%d] bytes[%d]\n", len, err, bytes);
 				if (err) {
 					if (err == -EPIPE || !bytes)
 						goto err;
@@ -738,8 +734,6 @@ static int quic_sendmsg(struct sock *sk, struct msghdr *msg, size_t msg_len)
 			bytes += frame->bytes;
 			quic_outq_set_force_delay(outq, delay);
 			quic_outq_ctrl_tail(sk, frame, delay);
-			pr_warn("HANDSHAKE len[%d] delay[%u] fbytes[%d] bytes[%d]\n", len, delay,
-				frame->bytes, bytes);
 		}
 		goto out;
 	}
